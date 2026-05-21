@@ -1,0 +1,30 @@
+{
+  "notes": "Replace asset_path values with your final art files when they are ready.",
+  "sprites": [
+    {
+      "name": "player_placeholder",
+      "shape": "pawn",
+      "asset_path": null
+    },
+    {
+      "name": "npc_placeholder",
+      "shape": "pawn",
+      "asset_path": null
+    },
+    {
+      "name": "spirit_placeholder",
+      "shape": "spirit",
+      "asset_path": null
+    },
+    {
+      "name": "spirit_fire_placeholder",
+      "shape": "spirit",
+      "asset_path": null
+    },
+    {
+      "name": "spirit_forest_placeholder",
+      "shape": "spirit",
+      "asset_path": null
+    }
+  ]
+}
