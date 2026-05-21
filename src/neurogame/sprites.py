@@ -13,6 +13,10 @@ class SpriteDefinition:
 
     `asset_path` can point at future artwork. While it is unset, renderers can
     use the placeholder colors and shape to keep the scene visible.
+
+    When ``blocks_pathfinding`` is true, grid pathfinding treats the owning
+    tile or entity cell as impassable (except the moving entity may still stand
+    on its own start cell).
     """
 
     name: str
@@ -24,6 +28,7 @@ class SpriteDefinition:
     anchor_x: float = 0.5
     anchor_y: float = 1.0
     asset_path: Path | None = None
+    blocks_pathfinding: bool = False
 
     def __post_init__(self) -> None:
         if self.width <= 0:
@@ -78,6 +83,7 @@ def build_default_sprite_library() -> SpriteLibrary:
                 fill="#4f9ddf",
                 outline="#2f5f96",
                 shape="diamond",
+                blocks_pathfinding=True,
             ),
             SpriteDefinition(
                 name="tile_stone",
@@ -126,6 +132,15 @@ def build_default_sprite_library() -> SpriteLibrary:
                 fill="#93e06c",
                 outline="#3d7c35",
                 shape="spirit",
+            ),
+            SpriteDefinition(
+                name="prop_boulder",
+                width=36,
+                height=44,
+                fill="#6b5b4f",
+                outline="#3a3028",
+                shape="pawn",
+                blocks_pathfinding=True,
             ),
         ]
     )

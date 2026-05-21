@@ -2,6 +2,7 @@
 
 from neurogame.engine import Entity, IsometricScene, Tile
 from neurogame.iso import IsoCamera, ScreenPoint
+from neurogame.pathfinding import find_path_on_grid
 from neurogame.sprites import SpriteDefinition, SpriteLibrary, build_default_sprite_library
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "SpriteLibrary",
     "Tile",
     "build_default_sprite_library",
+    "find_path_on_grid",
 ]

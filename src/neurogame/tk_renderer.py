@@ -37,9 +37,48 @@ class TkinterRenderer:
         for command in self.scene.build_draw_commands():
             self._draw_command(command)
 
-    def run(self) -> None:
+    def run(self, *, pathfinding_entity_id: str | None = "player") -> None:
+        self._path_queue: list[tuple[int, int]] = []
+        self._path_after_id: object | None = None
+        self._pathfinding_entity_id = pathfinding_entity_id
+        if pathfinding_entity_id:
+            self.canvas.bind("<Button-1>", self._on_canvas_click)
         self.render()
         self.root.mainloop()
+
+    def _on_canvas_click(self, event) -> None:
+        entity_id = self._pathfinding_entity_id
+        if not entity_id:
+            return
+
+        grid = self.scene.camera.screen_to_grid(float(event.x), float(event.y))
+        goal_x = int(round(grid.x))
+        goal_y = int(round(grid.y))
+
+        path = self.scene.pathfind_entity_to_cell(entity_id, goal_x, goal_y)
+        if not path:
+            return
+
+        if self._path_after_id is not None:
+            self.root.after_cancel(self._path_after_id)
+            self._path_after_id = None
+
+        self._path_queue = list(path)[1:]
+        self._advance_path_step()
+
+    def _advance_path_step(self) -> None:
+        entity_id = self._pathfinding_entity_id
+        if not entity_id or not self._path_queue:
+            return
+
+        next_x, next_y = self._path_queue.pop(0)
+        self.scene.move_entity(entity_id, float(next_x), float(next_y))
+        self.render()
+
+        if self._path_queue:
+            self._path_after_id = self.root.after(120, self._advance_path_step)
+        else:
+            self._path_after_id = None
 
     def _draw_command(self, command: DrawCommand) -> None:
         sprite = command.sprite
