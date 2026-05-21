@@ -37,6 +37,62 @@ class FindPathOnGridTests(unittest.TestCase):
 
 
 class ScenePathfindingTests(unittest.TestCase):
+    def test_pathfind_returns_none_for_missing_entity(self) -> None:
+        scene = IsometricScene.flat_map(2, 2)
+
+        path = scene.pathfind_entity_to_cell("nobody", 0, 0)
+
+        self.assertIsNone(path)
+
+    def test_red_drain_tile_does_not_block_pathfinding(self) -> None:
+        scene = IsometricScene.flat_map(2, 2)
+        scene.set_tile(Tile(x=0, y=0, sprite="tile_red_drain"))
+
+        blocked = scene.blocked_cells_for_pathfinding()
+
+        self.assertNotIn((0, 0), blocked)
+
+    def test_red_tile_drains_half_max_on_new_cell_entry(self) -> None:
+        scene = IsometricScene.flat_map(2, 2)
+        scene.set_tile(Tile(x=1, y=0, sprite="tile_red_drain"))
+        scene.add_entity(
+            Entity(
+                entity_id="s",
+                x=0.0,
+                y=0.0,
+                sprite="spirit_placeholder",
+                health=100.0,
+                max_health=100.0,
+            ),
+        )
+        scene.move_entity("s", 1.0, 0.0)
+        scene.apply_spirit_tile_hazards_after_move("s")
+
+        entity = next(entity for entity in scene.entities if entity.entity_id == "s")
+        self.assertEqual(entity.health, 50.0)
+
+    def test_red_tile_second_visit_drains_to_zero_and_removes_spirit(self) -> None:
+        scene = IsometricScene.flat_map(2, 2)
+        scene.set_tile(Tile(x=1, y=0, sprite="tile_red_drain"))
+        scene.add_entity(
+            Entity(
+                entity_id="s",
+                x=0.0,
+                y=0.0,
+                sprite="spirit_placeholder",
+                health=100.0,
+                max_health=100.0,
+            ),
+        )
+        scene.move_entity("s", 1.0, 0.0)
+        scene.apply_spirit_tile_hazards_after_move("s")
+        scene.move_entity("s", 0.0, 0.0)
+        scene.apply_spirit_tile_hazards_after_move("s")
+        scene.move_entity("s", 1.0, 0.0)
+        scene.apply_spirit_tile_hazards_after_move("s")
+
+        self.assertFalse(scene.has_entity("s"))
+
     def test_water_tile_blocks_pathfinding_cell(self) -> None:
         scene = IsometricScene.flat_map(3, 3)
         scene.set_tile(Tile(x=1, y=1, sprite="tile_water"))

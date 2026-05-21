@@ -62,7 +62,7 @@ class TkinterRenderer:
         for command in commands:
             self._draw_command(command)
         highlight_id = self._highlight_entity_id
-        if highlight_id:
+        if highlight_id and self.scene.has_entity(highlight_id):
             for command in commands:
                 if (
                     command.kind == "entity"
@@ -91,9 +91,9 @@ class TkinterRenderer:
         self._highlight_entity_id = pathfinding_entity_id
         self._path_steps_per_grid_edge = path_steps_per_grid_edge
         self._path_micro_step_ms = path_micro_step_ms
-        self._auto_spirit_ids = tuple(autonomous_spirit_ids)
+        self._auto_spirit_id_list = list(autonomous_spirit_ids)
         self._auto_spirit_queues: dict[str, list[tuple[float, float]]] = {
-            entity_id: [] for entity_id in self._auto_spirit_ids
+            entity_id: [] for entity_id in self._auto_spirit_id_list
         }
         self._auto_spirit_after_id: object | None = None
         self._auto_spirit_tick_ms = (
@@ -104,13 +104,13 @@ class TkinterRenderer:
         if pathfinding_entity_id:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
         self.render()
-        if self._auto_spirit_ids:
+        if self._auto_spirit_id_list:
             self._schedule_autonomous_spirits()
         self.root.mainloop()
 
     def _on_canvas_click(self, event) -> None:
         entity_id = self._pathfinding_entity_id
-        if not entity_id:
+        if not entity_id or not self.scene.has_entity(entity_id):
             return
 
         grid = self.scene.camera.screen_to_grid(float(event.x), float(event.y))
@@ -129,21 +129,41 @@ class TkinterRenderer:
             path,
             steps_per_edge=self._path_steps_per_grid_edge,
         )
-        self._advance_path_motion()
+        self._schedule_player_motion()
+
+    def _schedule_player_motion(self) -> None:
+        if not self._path_motion_queue:
+            return
+        if self._path_after_id is not None:
+            self.root.after_cancel(self._path_after_id)
+        self._path_after_id = self.root.after(
+            self._path_micro_step_ms,
+            self._advance_path_motion,
+        )
 
     def _advance_path_motion(self) -> None:
+        self._path_after_id = None
         entity_id = self._pathfinding_entity_id
         if not entity_id or not self._path_motion_queue:
+            return
+        if not self.scene.has_entity(entity_id):
+            self._path_motion_queue.clear()
             return
 
         next_x, next_y = self._path_motion_queue.pop(0)
         self.scene.move_entity(entity_id, float(next_x), float(next_y))
+        self.scene.apply_spirit_tile_hazards_after_move(entity_id)
+        if not self.scene.has_entity(entity_id):
+            self._path_motion_queue.clear()
+            self._pathfinding_entity_id = None
+            self._highlight_entity_id = None
+            self.render()
+            return
+
         self.render()
 
         if self._path_motion_queue:
-            self._path_after_id = self.root.after(self._path_micro_step_ms, self._advance_path_motion)
-        else:
-            self._path_after_id = None
+            self._schedule_player_motion()
 
     def _schedule_autonomous_spirits(self) -> None:
         self._auto_spirit_after_id = self.root.after(
@@ -153,10 +173,15 @@ class TkinterRenderer:
 
     def _advance_autonomous_spirits(self) -> None:
         self._auto_spirit_after_id = None
-        if not self._auto_spirit_ids:
+        if not self._auto_spirit_id_list:
             return
 
-        for entity_id in self._auto_spirit_ids:
+        for entity_id in list(self._auto_spirit_id_list):
+            if not self.scene.has_entity(entity_id):
+                self._auto_spirit_id_list.remove(entity_id)
+                self._auto_spirit_queues.pop(entity_id, None)
+                continue
+
             queue = self._auto_spirit_queues.setdefault(entity_id, [])
             if not queue:
                 self._assign_random_autonomous_path(entity_id)
@@ -165,11 +190,19 @@ class TkinterRenderer:
             if queue:
                 next_x, next_y = queue.pop(0)
                 self.scene.move_entity(entity_id, float(next_x), float(next_y))
+                self.scene.apply_spirit_tile_hazards_after_move(entity_id)
+                if not self.scene.has_entity(entity_id):
+                    self._auto_spirit_id_list.remove(entity_id)
+                    self._auto_spirit_queues.pop(entity_id, None)
 
         self.render()
-        self._schedule_autonomous_spirits()
+        if self._auto_spirit_id_list:
+            self._schedule_autonomous_spirits()
 
     def _assign_random_autonomous_path(self, entity_id: str) -> None:
+        if not self.scene.has_entity(entity_id):
+            return
+
         bounds = self.scene.floor_grid_bounds()
         if bounds is None:
             return
@@ -197,7 +230,11 @@ class TkinterRenderer:
             self._draw_pawn(command.screen.x, command.screen.y, sprite)
         elif sprite.shape == "spirit":
             self._draw_spirit(command.screen.x, command.screen.y, sprite)
-            if command.health is not None and command.max_health is not None:
+            if (
+                command.health is not None
+                and command.max_health is not None
+                and command.health > 0
+            ):
                 self._draw_spirit_health_bar(
                     command.screen.x,
                     command.screen.y,

@@ -17,6 +17,9 @@ class SpriteDefinition:
     When ``blocks_pathfinding`` is true, grid pathfinding treats the owning
     tile or entity cell as impassable (except the moving entity may still stand
     on its own start cell).
+
+    When ``spirit_drain_half_max_hp`` is true on a ground tile, a spirit that
+    enters that grid cell loses half of its max health (see scene hazard logic).
     """
 
     name: str
@@ -29,6 +32,7 @@ class SpriteDefinition:
     anchor_y: float = 1.0
     asset_path: Path | None = None
     blocks_pathfinding: bool = False
+    spirit_drain_half_max_hp: bool = False
 
     def __post_init__(self) -> None:
         if self.width <= 0:
@@ -101,6 +105,15 @@ def build_default_sprite_library() -> SpriteLibrary:
                 outline="#3a5fbf",
                 shape="diamond",
                 blocks_pathfinding=True,
+            ),
+            SpriteDefinition(
+                name="tile_red_drain",
+                width=64,
+                height=32,
+                fill="#c94c4c",
+                outline="#7a1f1f",
+                shape="diamond",
+                spirit_drain_half_max_hp=True,
             ),
             SpriteDefinition(
                 name="player_placeholder",

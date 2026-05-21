@@ -1,9 +1,9 @@
 """Run a small isometric scene using placeholder sprites.
 
 Click the map to move the cyan player spirit (gold ring); paths avoid water,
-blue tiles, boulders, and every other spirit's cell. Ten slower wandering spirits
-pick random goals with the same rules. Each spirit shows a health bar above its
-body. Spirits use a high draw layer above tiles.
+blue tiles, boulders, and every other spirit's cell. Red tiles are walkable but
+drain half of a spirit's max HP when stepped on; at 0 HP a spirit is removed.
+Ten slower wandering spirits pick random goals. Each spirit shows a health bar.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ MAP_HEIGHT = 22
 SPIRIT_DRAW_LAYER = 120
 SPIRIT_HP = 100.0
 WANDERING_SPIRIT_COUNT = 10
+RED_TILE_COUNT = 14
 WANDERING_SPIRIT_SPRITES = (
     "spirit_placeholder",
     "spirit_forest_placeholder",
@@ -67,8 +68,20 @@ def build_demo_scene() -> tuple[IsometricScene, tuple[str, ...]]:
         if (x, y) not in reserved_blue
     ]
     blue_count = min(26, len(candidates))
-    for x, y in rng.sample(candidates, blue_count):
+    blue_cells: list[tuple[int, int]] = rng.sample(candidates, blue_count)
+    placed_blue = set(blue_cells)
+    for x, y in blue_cells:
         scene.set_tile(Tile(x=x, y=y, sprite="tile_blue_patch"))
+
+    red_candidates = [
+        (x, y)
+        for x in range(MAP_WIDTH)
+        for y in range(MAP_HEIGHT)
+        if (x, y) not in reserved_blue and (x, y) not in placed_blue
+    ]
+    red_count = min(RED_TILE_COUNT, len(red_candidates))
+    for x, y in rng.sample(red_candidates, red_count):
+        scene.set_tile(Tile(x=x, y=y, sprite="tile_red_drain"))
 
     scene.add_entity(Entity(entity_id="player", x=11, y=11, sprite="player_placeholder"))
     scene.add_entity(Entity(entity_id="villager", x=17, y=9, sprite="npc_placeholder"))

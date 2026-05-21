@@ -56,6 +56,7 @@ class IsometricScene:
     sprites: SpriteLibrary = field(default_factory=build_default_sprite_library)
     tiles: list[Tile] = field(default_factory=list)
     entities: list[Entity] = field(default_factory=list)
+    spirit_last_grid_cell: dict[str, tuple[int, int]] = field(default_factory=dict)
 
     @classmethod
     def flat_map(
@@ -78,6 +79,68 @@ class IsometricScene:
             for x in range(width):
                 scene.add_tile(Tile(x=x, y=y, sprite=default_sprite))
         return scene
+
+    def has_entity(self, entity_id: str) -> bool:
+        return any(entity.entity_id == entity_id for entity in self.entities)
+
+    def remove_entity(self, entity_id: str) -> None:
+        """Remove an entity from the scene if it exists."""
+
+        self.entities = [entity for entity in self.entities if entity.entity_id != entity_id]
+        self.spirit_last_grid_cell.pop(entity_id, None)
+
+    def sprite_at_ground_cell(self, grid_x: int, grid_y: int) -> str | None:
+        """Return the sprite name of the ground tile at ``(grid_x, grid_y)``, if any."""
+
+        for tile in self.tiles:
+            if tile.z == 0 and tile.x == grid_x and tile.y == grid_y:
+                return tile.sprite
+        return None
+
+    def apply_spirit_tile_hazards_after_move(self, entity_id: str) -> None:
+        """When a spirit enters a new grid cell, apply red-tile drain or remove at 0 HP."""
+
+        try:
+            entity = self._entity_by_id(entity_id)
+        except KeyError:
+            return
+        if entity.health is None or entity.max_health is None:
+            return
+
+        cell = (int(round(entity.x)), int(round(entity.y)))
+        previous = self.spirit_last_grid_cell.get(entity_id)
+        if previous == cell:
+            return
+
+        sprite_name = self.sprite_at_ground_cell(*cell)
+        should_drain = False
+        if sprite_name is not None:
+            should_drain = self.sprites.get(sprite_name).spirit_drain_half_max_hp
+
+        if should_drain:
+            new_health = max(0.0, entity.health - entity.max_health / 2.0)
+            if new_health <= 0.0:
+                self.remove_entity(entity_id)
+                return
+            self._set_entity_health(entity_id, new_health)
+
+        self.spirit_last_grid_cell[entity_id] = cell
+
+    def _set_entity_health(self, entity_id: str, health: float) -> None:
+        for index, entity in enumerate(self.entities):
+            if entity.entity_id == entity_id:
+                self.entities[index] = Entity(
+                    entity_id=entity.entity_id,
+                    x=entity.x,
+                    y=entity.y,
+                    z=entity.z,
+                    sprite=entity.sprite,
+                    layer=entity.layer,
+                    health=health,
+                    max_health=entity.max_health,
+                )
+                return
+        raise KeyError(f"Unknown entity '{entity_id}'")
 
     def add_tile(self, tile: Tile) -> None:
         self.sprites.get(tile.sprite)
@@ -169,7 +232,10 @@ class IsometricScene:
             return None
 
         min_x, max_x, min_y, max_y = bounds
-        entity = self._entity_by_id(entity_id)
+        try:
+            entity = self._entity_by_id(entity_id)
+        except KeyError:
+            return None
         start = (int(round(entity.x)), int(round(entity.y)))
         goal = (goal_x, goal_y)
         blocked = self.blocked_cells_for_pathfinding(moving_entity_id=entity_id)
