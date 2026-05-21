@@ -2,7 +2,24 @@ import unittest
 
 from neurogame import Entity, IsometricScene, Tile
 from neurogame.pathfinding import find_path_on_grid
-from neurogame.tk_renderer import _queued_step_targets_blocked_cell
+from neurogame.tk_renderer import _motion_points_along_grid_path, _queued_step_targets_blocked_cell
+
+
+class MotionAlongPathTests(unittest.TestCase):
+    def test_lead_in_from_current_float_before_grid_edges(self) -> None:
+        path = [(0, 0), (1, 0)]
+        pts = _motion_points_along_grid_path(
+            path,
+            steps_per_edge=4,
+            origin_x=0.25,
+            origin_y=0.0,
+        )
+
+        self.assertEqual(len(pts), 8)
+        self.assertAlmostEqual(pts[0][0], 0.1875)
+        self.assertAlmostEqual(pts[0][1], 0.0)
+        self.assertAlmostEqual(pts[3][0], 0.0)
+        self.assertAlmostEqual(pts[3][1], 0.0)
 
 
 class QueuedStepBlockedTests(unittest.TestCase):

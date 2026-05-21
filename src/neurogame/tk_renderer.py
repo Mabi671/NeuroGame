@@ -9,6 +9,10 @@ accepted player spirit path changes to avoid rapid replanning from click spam.
 While following a queued path, each step is checked against the **current**
 blocked-cell set so movement stops or replans (NPCs) when obstacles change
 mid-route (e.g. painted tiles or other spirits).
+
+New paths are sampled from the entity's **current float** position: a short
+lead-in blends into the first path cell before edge interpolation so destination
+changes do not snap to grid centers.
 """
 
 from __future__ import annotations
@@ -25,8 +29,15 @@ def _motion_points_along_grid_path(
     path: list[tuple[int, int]],
     *,
     steps_per_edge: int,
+    origin_x: float,
+    origin_y: float,
 ) -> list[tuple[float, float]]:
-    """Linearly interpolate each grid edge into float positions for smooth motion."""
+    """Interpolate from the entity's current float position, then along each path edge.
+
+    ``origin_x`` / ``origin_y`` should be the entity's position when the path was
+    planned so destination changes blend smoothly from the in-tile offset
+    instead of snapping to cell centers.
+    """
 
     if steps_per_edge <= 0:
         raise ValueError("steps_per_edge must be positive")
@@ -34,9 +45,20 @@ def _motion_points_along_grid_path(
         return []
 
     points: list[tuple[float, float]] = []
+    first_x, first_y = float(path[0][0]), float(path[0][1])
+    if (origin_x - first_x) ** 2 + (origin_y - first_y) ** 2 > 1e-10:
+        for step in range(1, steps_per_edge + 1):
+            t = step / steps_per_edge
+            points.append(
+                (
+                    origin_x + (first_x - origin_x) * t,
+                    origin_y + (first_y - origin_y) * t,
+                )
+            )
+
     for index in range(len(path) - 1):
-        x0, y0 = path[index]
-        x1, y1 = path[index + 1]
+        x0, y0 = float(path[index][0]), float(path[index][1])
+        x1, y1 = float(path[index + 1][0]), float(path[index + 1][1])
         for step in range(1, steps_per_edge + 1):
             t = step / steps_per_edge
             points.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
@@ -222,9 +244,12 @@ class TkinterRenderer:
             self.root.after_cancel(self._path_after_id)
             self._path_after_id = None
 
+        origin_x, origin_y = self._entity_xy(entity_id)
         self._path_motion_queue = _motion_points_along_grid_path(
             path,
             steps_per_edge=self._path_steps_per_grid_edge,
+            origin_x=origin_x,
+            origin_y=origin_y,
         )
         if self._player_path_cooldown_s is not None:
             self._last_player_path_change_monotonic = time.monotonic()
@@ -327,11 +352,20 @@ class TkinterRenderer:
                 continue
             if len(path) < 2:
                 continue
+            ox, oy = self._entity_xy(entity_id)
             self._auto_spirit_queues[entity_id] = _motion_points_along_grid_path(
                 path,
                 steps_per_edge=self._path_steps_per_grid_edge,
+                origin_x=ox,
+                origin_y=oy,
             )
             return
+
+    def _entity_xy(self, entity_id: str) -> tuple[float, float]:
+        for entity in self.scene.entities:
+            if entity.entity_id == entity_id:
+                return entity.x, entity.y
+        raise KeyError(f"Unknown entity '{entity_id}'")
 
     def _draw_command(self, command: DrawCommand) -> None:
         sprite = command.sprite
