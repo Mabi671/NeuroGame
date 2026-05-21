@@ -4,6 +4,9 @@ Click the map to move the cyan player spirit (gold ring); paths avoid water,
 blue tiles, boulders, and every other spirit's cell. Red tiles are walkable but
 drain half of a spirit's max HP when stepped on; at 0 HP a spirit is removed.
 Ten slower wandering spirits pick random goals. Each spirit shows a health bar.
+
+Use the window menu: **Mode → Paint tiles** and **Brush** to pick a floor tile,
+then click the map to paint. Switch **Mode → Move spirit** to path again.
 """
 
 from __future__ import annotations

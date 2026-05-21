@@ -1,11 +1,15 @@
-"""Tkinter renderer for the isometric engine demo."""
+"""Tkinter renderer for the isometric engine demo.
+
+When ``tile_edit_menu`` is enabled in ``run()``, the window gets **Mode** and
+**Brush** menus so the player can paint floor tiles (``Paint tiles`` + click).
+"""
 
 from __future__ import annotations
 
 import random
-from tkinter import Canvas, Tk
+from tkinter import Canvas, Menu, StringVar, Tk
 
-from neurogame.engine import DrawCommand, IsometricScene
+from neurogame.engine import DrawCommand, IsometricScene, Tile
 from neurogame.sprites import SpriteDefinition
 
 
@@ -31,6 +35,15 @@ def _motion_points_along_grid_path(
     return points
 
 
+TILE_BRUSH_MENU: tuple[tuple[str, str], ...] = (
+    ("tile_grass", "Grass"),
+    ("tile_water", "Water (blocks path)"),
+    ("tile_stone", "Stone"),
+    ("tile_blue_patch", "Blue (blocks path)"),
+    ("tile_red_drain", "Red hazard (drains HP)"),
+)
+
+
 class TkinterRenderer:
     """Render an isometric scene to a Tkinter canvas."""
 
@@ -45,6 +58,7 @@ class TkinterRenderer:
     ) -> None:
         self.scene = scene
         self._highlight_entity_id: str | None = None
+        self._tile_edit_menu = False
         self.root = Tk()
         self.root.title(title)
         self.canvas = Canvas(
@@ -84,6 +98,7 @@ class TkinterRenderer:
         path_micro_step_ms: int = 12,
         autonomous_spirit_ids: tuple[str, ...] = (),
         autonomous_spirit_tick_ms: int | None = None,
+        tile_edit_menu: bool = True,
     ) -> None:
         self._path_motion_queue: list[tuple[float, float]] = []
         self._path_after_id: object | None = None
@@ -101,14 +116,67 @@ class TkinterRenderer:
             if autonomous_spirit_tick_ms is not None
             else path_micro_step_ms
         )
-        if pathfinding_entity_id:
+        self._tile_edit_menu = tile_edit_menu
+        self._input_mode_var = StringVar(master=self.root, value="move")
+        self._brush_sprite_var = StringVar(master=self.root, value="tile_grass")
+        if tile_edit_menu:
+            self._build_tile_edit_menubar()
+        if pathfinding_entity_id or tile_edit_menu:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
         self.render()
         if self._auto_spirit_id_list:
             self._schedule_autonomous_spirits()
         self.root.mainloop()
 
+    def _build_tile_edit_menubar(self) -> None:
+        menubar = Menu(self.root)
+        mode_menu = Menu(menubar, tearoff=0)
+        mode_menu.add_radiobutton(
+            label="Move spirit",
+            variable=self._input_mode_var,
+            value="move",
+            command=self.render,
+        )
+        mode_menu.add_radiobutton(
+            label="Paint tiles",
+            variable=self._input_mode_var,
+            value="paint",
+            command=self.render,
+        )
+        menubar.add_cascade(label="Mode", menu=mode_menu)
+
+        brush_menu = Menu(menubar, tearoff=0)
+        for sprite_name, label in TILE_BRUSH_MENU:
+            brush_menu.add_radiobutton(
+                label=label,
+                variable=self._brush_sprite_var,
+                value=sprite_name,
+                command=self.render,
+            )
+        menubar.add_cascade(label="Brush", menu=brush_menu)
+
+        self.root.config(menu=menubar)
+
+    def _paint_tile_at_screen(self, screen_x: float, screen_y: float) -> None:
+        bounds = self.scene.floor_grid_bounds()
+        if bounds is None:
+            return
+        min_x, max_x, min_y, max_y = bounds
+        grid = self.scene.camera.screen_to_grid(screen_x, screen_y)
+        gx = int(round(grid.x))
+        gy = int(round(grid.y))
+        if not (min_x <= gx <= max_x and min_y <= gy <= max_y):
+            return
+        sprite_name = self._brush_sprite_var.get()
+        self.scene.sprites.get(sprite_name)
+        self.scene.set_tile(Tile(x=gx, y=gy, z=0, sprite=sprite_name))
+        self.render()
+
     def _on_canvas_click(self, event) -> None:
+        if self._tile_edit_menu and self._input_mode_var.get() == "paint":
+            self._paint_tile_at_screen(float(event.x), float(event.y))
+            return
+
         entity_id = self._pathfinding_entity_id
         if not entity_id or not self.scene.has_entity(entity_id):
             return
