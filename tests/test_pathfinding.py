@@ -45,6 +45,24 @@ class ScenePathfindingTests(unittest.TestCase):
 
         self.assertIn((1, 1), blocked)
 
+    def test_blue_tile_blocks_pathfinding_cell(self) -> None:
+        scene = IsometricScene.flat_map(2, 2)
+        scene.set_tile(Tile(x=0, y=0, sprite="tile_blue_patch"))
+
+        blocked = scene.blocked_cells_for_pathfinding()
+
+        self.assertIn((0, 0), blocked)
+
+    def test_blocking_spirit_entity_blocks_its_cell(self) -> None:
+        scene = IsometricScene.flat_map(3, 3)
+        scene.add_entity(
+            Entity(entity_id="ward", x=1, y=1, sprite="spirit_fire_placeholder"),
+        )
+
+        blocked = scene.blocked_cells_for_pathfinding()
+
+        self.assertIn((1, 1), blocked)
+
     def test_path_routes_around_water_and_boulder_sprites(self) -> None:
         scene = IsometricScene.flat_map(5, 3)
         scene.set_tile(Tile(x=2, y=1, sprite="tile_water"))

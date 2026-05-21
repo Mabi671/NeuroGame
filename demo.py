@@ -1,8 +1,8 @@
 """Run a small isometric scene using placeholder sprites.
 
-Click the map to move the player; paths avoid water tiles and boulder props.
-The demo uses an 18x18 floor with random decorative blue tiles and smooth
-interpolated movement along each planned path segment.
+Click the map to move the cyan spirit; paths avoid water, blue tiles, boulders,
+and the orange obstacle spirit. The demo uses an 18x18 floor with random blue
+tiles and smooth interpolated movement along each planned path segment.
 """
 
 from __future__ import annotations
@@ -66,24 +66,15 @@ def build_demo_scene() -> IsometricScene:
     scene.add_entity(Entity(entity_id="boulder-a", x=8, y=4, sprite="prop_boulder"))
     scene.add_entity(Entity(entity_id="boulder-b", x=10, y=4, sprite="prop_boulder"))
     scene.add_entity(
-        Entity(entity_id="spirit-air", x=6.8, y=10.4, z=0.2, sprite="spirit_placeholder")
+        Entity(entity_id="spirit-mover", x=7.0, y=9.0, z=0.2, sprite="spirit_placeholder")
     )
     scene.add_entity(
         Entity(
-            entity_id="spirit-fire",
-            x=11.4,
-            y=11.0,
+            entity_id="spirit-obstacle",
+            x=11.0,
+            y=7.0,
             z=0.2,
             sprite="spirit_fire_placeholder",
-        )
-    )
-    scene.add_entity(
-        Entity(
-            entity_id="spirit-forest",
-            x=5.0,
-            y=5.0,
-            z=0.2,
-            sprite="spirit_forest_placeholder",
         )
     )
     return scene
@@ -91,6 +82,7 @@ def build_demo_scene() -> IsometricScene:
 
 if __name__ == "__main__":
     TkinterRenderer(build_demo_scene(), width=1280, height=820).run(
+        pathfinding_entity_id="spirit-mover",
         path_steps_per_grid_edge=16,
         path_micro_step_ms=10,
     )
