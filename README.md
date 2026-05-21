@@ -25,7 +25,7 @@ and three spirit placeholders.
 ```python
 from neurogame import Entity, IsoCamera, IsometricScene
 
-camera = IsoCamera(tile_width=64, tile_height=32, origin_x=400, origin_y=80)
+camera = IsoCamera(tile_width=32, tile_height=16, origin_x=200, origin_y=40)
 scene = IsometricScene.flat_map(8, 8, camera=camera)
 scene.add_entity(Entity(entity_id="spirit", x=3, y=4, sprite="spirit_placeholder"))
 

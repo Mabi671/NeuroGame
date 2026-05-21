@@ -16,8 +16,8 @@ import random
 from neurogame import Entity, IsoCamera, IsometricScene
 from neurogame.tk_renderer import TkinterRenderer
 
-MAP_WIDTH = 22
-MAP_HEIGHT = 22
+MAP_WIDTH = 44
+MAP_HEIGHT = 44
 SPIRIT_DRAW_LAYER = 120
 SPIRIT_HP = 100.0
 WANDERING_SPIRIT_COUNT = 6
@@ -29,18 +29,18 @@ WANDERING_SPIRIT_SPRITES = (
 
 
 def build_demo_scene() -> tuple[IsometricScene, tuple[str, ...]]:
-    camera = IsoCamera(tile_width=72, tile_height=36, origin_x=720, origin_y=110)
+    camera = IsoCamera(tile_width=36, tile_height=18, origin_x=360, origin_y=55)
     scene = IsometricScene.flat_map(MAP_WIDTH, MAP_HEIGHT, camera=camera)
 
     rng = random.Random()
 
-    scene.add_entity(Entity(entity_id="boulder-a", x=11, y=6, sprite="prop_boulder"))
-    scene.add_entity(Entity(entity_id="boulder-b", x=14, y=6, sprite="prop_boulder"))
+    scene.add_entity(Entity(entity_id="boulder-a", x=22, y=12, sprite="prop_boulder"))
+    scene.add_entity(Entity(entity_id="boulder-b", x=28, y=12, sprite="prop_boulder"))
     scene.add_entity(
         Entity(
             entity_id="spirit-mover",
-            x=8.0,
-            y=12.0,
+            x=16.0,
+            y=24.0,
             z=0.2,
             sprite="spirit_placeholder",
             layer=SPIRIT_DRAW_LAYER,
@@ -51,9 +51,9 @@ def build_demo_scene() -> tuple[IsometricScene, tuple[str, ...]]:
 
     static_blocked = scene.blocked_cells_for_pathfinding()
     reserved_spawn = {
-        (11, 6),
-        (14, 6),
-        (8, 12),
+        (22, 12),
+        (28, 12),
+        (16, 24),
     }
     walkable_spawns = [
         (x, y)
@@ -90,7 +90,7 @@ def build_demo_scene() -> tuple[IsometricScene, tuple[str, ...]]:
 
 if __name__ == "__main__":
     demo_scene, autonomous_ids = build_demo_scene()
-    TkinterRenderer(demo_scene, width=1380, height=880).run(
+    TkinterRenderer(demo_scene, width=690, height=440).run(
         pathfinding_entity_id="spirit-mover",
         path_steps_per_grid_edge=16,
         path_micro_step_ms=10,

@@ -5,18 +5,18 @@ from neurogame.iso import IsoCamera
 
 class IsoCameraTests(unittest.TestCase):
     def test_grid_to_screen_uses_isometric_projection(self) -> None:
-        camera = IsoCamera(tile_width=64, tile_height=32, origin_x=100, origin_y=50)
+        camera = IsoCamera(tile_width=32, tile_height=16, origin_x=100, origin_y=50)
 
         origin = camera.grid_to_screen(0, 0)
         east = camera.grid_to_screen(1, 0)
         south = camera.grid_to_screen(0, 1)
 
         self.assertEqual((origin.x, origin.y), (100, 50))
-        self.assertEqual((east.x, east.y), (132, 66))
-        self.assertEqual((south.x, south.y), (68, 66))
+        self.assertEqual((east.x, east.y), (116, 58))
+        self.assertEqual((south.x, south.y), (84, 58))
 
     def test_screen_to_grid_round_trips_on_same_elevation(self) -> None:
-        camera = IsoCamera(tile_width=80, tile_height=40, origin_x=320, origin_y=120)
+        camera = IsoCamera(tile_width=40, tile_height=20, origin_x=320, origin_y=120)
 
         for point in [(0, 0, 0), (3, 4, 0), (2.5, 1.25, 0), (5, 2, 1)]:
             with self.subTest(point=point):

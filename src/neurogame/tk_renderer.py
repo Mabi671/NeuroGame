@@ -201,8 +201,8 @@ class TkinterRenderer:
         self,
         scene: IsometricScene,
         *,
-        width: int = 960,
-        height: int = 640,
+        width: int = 480,
+        height: int = 320,
         title: str = "NeuroGame Isometric Demo",
         background: str = "#111827",
     ) -> None:
@@ -246,7 +246,7 @@ class TkinterRenderer:
     def _draw_projectile(self, projectile: Projectile) -> None:
         z = 0.42
         point = self.scene.camera.grid_to_screen(projectile.x, projectile.y, z)
-        radius = 6.0
+        radius = 3.0
         self.canvas.create_oval(
             point.x - radius,
             point.y - radius,
@@ -254,7 +254,7 @@ class TkinterRenderer:
             point.y + radius,
             fill="#fcd34d",
             outline="#ea580c",
-            width=2,
+            width=1,
         )
 
     def _schedule_projectile_tick(self) -> None:
@@ -703,7 +703,7 @@ class TkinterRenderer:
         left, top = self._anchored_bounds(x, y, sprite)
         right = left + sprite.width
         bottom = top + sprite.height
-        glow_margin = 8
+        glow_margin = max(2.0, sprite.width * 0.25)
 
         self.canvas.create_oval(
             left - glow_margin,
@@ -723,29 +723,34 @@ class TkinterRenderer:
             outline=sprite.outline,
             width=2,
         )
+        eye_dx = max(2.0, sprite.width * 0.24)
+        eye_in = max(1.0, sprite.width * 0.09)
         self.canvas.create_oval(
-            x - 8,
+            x - eye_dx,
             top + sprite.height * 0.33,
-            x - 3,
+            x - eye_in,
             top + sprite.height * 0.44,
             fill=sprite.outline,
             outline=sprite.outline,
         )
         self.canvas.create_oval(
-            x + 3,
+            x + eye_in,
             top + sprite.height * 0.33,
-            x + 8,
+            x + eye_dx,
             top + sprite.height * 0.44,
             fill=sprite.outline,
             outline=sprite.outline,
         )
+        lip = max(2.0, sprite.width * 0.12)
+        toe = max(2.0, sprite.height * 0.1)
+        smile = max(3.0, sprite.height * 0.2)
         self.canvas.create_line(
-            left + 4,
-            bottom - 4,
+            left + lip,
+            bottom - toe,
             x,
-            bottom + 8,
-            right - 4,
-            bottom - 4,
+            bottom + smile,
+            right - lip,
+            bottom - toe,
             fill=sprite.outline,
             width=2,
             smooth=True,
@@ -763,8 +768,8 @@ class TkinterRenderer:
 
         left, top = self._anchored_bounds(x, y, sprite)
         bar_width = sprite.width
-        bar_height = 6
-        gap = 5
+        bar_height = max(3.0, sprite.height * 0.14)
+        gap = max(2.0, sprite.height * 0.12)
         bar_top = top - bar_height - gap
         ratio = 0.0 if max_health <= 0 else max(0.0, min(1.0, health / max_health))
 
@@ -777,7 +782,7 @@ class TkinterRenderer:
             outline="#374151",
             width=1,
         )
-        inner = 2
+        inner = max(1.0, min(2.0, sprite.height * 0.06))
         inner_width = max(0.0, (bar_width - inner * 2) * ratio)
         self.canvas.create_rectangle(
             left + inner,
@@ -794,7 +799,7 @@ class TkinterRenderer:
         left, top = self._anchored_bounds(x, y, sprite)
         right = left + sprite.width
         bottom = top + sprite.height
-        margin = 10
+        margin = max(4.0, sprite.width * 0.3)
         self.canvas.create_oval(
             left - margin,
             top - margin,
@@ -802,7 +807,7 @@ class TkinterRenderer:
             bottom + margin,
             fill="",
             outline="#f5d547",
-            width=3,
+            width=2,
         )
 
     def _draw_box(self, x: float, y: float, sprite: SpriteDefinition) -> None:
