@@ -11,6 +11,10 @@ While following a queued path, each step is checked against the **current**
 blocked-cell set so movement stops or replans (NPCs) when obstacles change
 mid-route (e.g. painted tiles or other spirits).
 
+**Right-click** the map (with a controllable spirit) to fire a short-range
+projectile toward the cursor; other spirits lose 20 HP per hit and are removed
+at 0 HP.
+
 New paths are sampled from the entity's **current float** position: a short
 lead-in blends into the first path cell before edge interpolation so destination
 changes do not snap to grid centers.
@@ -23,7 +27,7 @@ import time
 import tkinter as tk
 from tkinter import Canvas, StringVar, Tk, ttk
 
-from neurogame.engine import DrawCommand, IsometricScene, Tile
+from neurogame.engine import DrawCommand, IsometricScene, Projectile, Tile
 from neurogame.sprites import SpriteDefinition
 
 
@@ -236,6 +240,46 @@ class TkinterRenderer:
                     )
                     break
 
+        for projectile in self.scene.projectiles:
+            self._draw_projectile(projectile)
+
+    def _draw_projectile(self, projectile: Projectile) -> None:
+        z = 0.42
+        point = self.scene.camera.grid_to_screen(projectile.x, projectile.y, z)
+        radius = 6.0
+        self.canvas.create_oval(
+            point.x - radius,
+            point.y - radius,
+            point.x + radius,
+            point.y + radius,
+            fill="#fcd34d",
+            outline="#ea580c",
+            width=2,
+        )
+
+    def _schedule_projectile_tick(self) -> None:
+        self._projectile_after_id = self.root.after(
+            self._projectile_tick_ms,
+            self._tick_projectiles,
+        )
+
+    def _tick_projectiles(self) -> None:
+        self._projectile_after_id = None
+        self.scene.advance_projectiles(damage=self._projectile_damage)
+        self.render()
+        self._schedule_projectile_tick()
+
+    def _on_canvas_right_click(self, event: object) -> None:
+        entity_id = self._pathfinding_entity_id
+        if not entity_id or not self.scene.has_entity(entity_id):
+            return
+        x = getattr(event, "x", None)
+        y = getattr(event, "y", None)
+        if x is None or y is None:
+            return
+        self.scene.spawn_projectile_toward_screen(entity_id, float(x), float(y))
+        self.render()
+
     def run(
         self,
         *,
@@ -246,6 +290,8 @@ class TkinterRenderer:
         autonomous_spirit_tick_ms: int | None = None,
         tile_edit_menu: bool = True,
         player_path_cooldown_s: float | None = 0.3,
+        projectile_tick_ms: int = 18,
+        projectile_damage: float = 20.0,
     ) -> None:
         self._path_motion_queue: list[tuple[float, float]] = []
         self._path_after_id: object | None = None
@@ -255,6 +301,9 @@ class TkinterRenderer:
         self._highlight_entity_id = pathfinding_entity_id
         self._path_steps_per_grid_edge = path_steps_per_grid_edge
         self._path_micro_step_ms = path_micro_step_ms
+        self._projectile_tick_ms = projectile_tick_ms
+        self._projectile_damage = projectile_damage
+        self._projectile_after_id: object | None = None
         self._auto_spirit_id_list = list(autonomous_spirit_ids)
         self._auto_spirit_queues: dict[str, list[tuple[float, float]]] = {
             entity_id: [] for entity_id in self._auto_spirit_id_list
@@ -276,7 +325,7 @@ class TkinterRenderer:
             shell.pack(side=tk.TOP, fill=tk.X)
             paint_panel = ttk.LabelFrame(
                 shell,
-                text="Floor palette — brush + paint mode, then click or drag the map",
+                text="Floor palette — paint mode + drag map; right-click map to shoot other spirits (−20 HP)",
                 style="Palette.TLabelframe",
             )
             paint_panel.pack(fill=tk.BOTH, expand=True, padx=12, pady=(10, 8))
@@ -290,11 +339,15 @@ class TkinterRenderer:
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         if pathfinding_entity_id or tile_edit_menu:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
+        if pathfinding_entity_id:
+            self.canvas.bind("<Button-3>", self._on_canvas_right_click)
         if tile_edit_menu:
             self.canvas.bind("<B1-Motion>", self._on_canvas_paint_b1_motion)
         self.render()
         if self._auto_spirit_id_list:
             self._schedule_autonomous_spirits()
+        if pathfinding_entity_id:
+            self._schedule_projectile_tick()
         self.root.mainloop()
 
     def _build_tile_paint_panel(self, parent: ttk.LabelFrame) -> None:

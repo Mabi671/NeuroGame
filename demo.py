@@ -5,7 +5,8 @@ The floor is **all grass** until you use the in-window **Floor palette** panel
 or red hazard tiles by **clicking or click-dragging** on the map. Click the map to move the cyan
 controllable spirit (gold ring); paths avoid blocking tiles, boulders, and other
 spirits. Red hazard tiles drain half max HP when entered; at 0 HP a spirit is
-removed. Ten slower wandering spirits roam with health bars.
+removed. Six slower wandering spirits roam with health bars. **Right-click** shoots
+a projectile toward the cursor (20 damage to other spirits).
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ MAP_WIDTH = 22
 MAP_HEIGHT = 22
 SPIRIT_DRAW_LAYER = 120
 SPIRIT_HP = 100.0
-WANDERING_SPIRIT_COUNT = 10
+WANDERING_SPIRIT_COUNT = 6
 WANDERING_SPIRIT_SPRITES = (
     "spirit_placeholder",
     "spirit_forest_placeholder",
