@@ -17,11 +17,13 @@ at 0 HP.
 
 New paths are sampled from the entity's **current float** position: a short
 lead-in blends into the first path cell before edge interpolation so destination
-changes do not snap to grid centers.
+changes do not snap to grid centers. Lead-in micro-step count scales with how
+far the spirit still is from that first cell so mid-route replans stay snappy.
 """
 
 from __future__ import annotations
 
+import math
 import random
 import time
 import tkinter as tk
@@ -52,9 +54,20 @@ def _motion_points_along_grid_path(
 
     points: list[tuple[float, float]] = []
     first_x, first_y = float(path[0][0]), float(path[0][1])
-    if (origin_x - first_x) ** 2 + (origin_y - first_y) ** 2 > 1e-10:
-        for step in range(1, steps_per_edge + 1):
-            t = step / steps_per_edge
+    lead_dist = math.hypot(origin_x - first_x, origin_y - first_y)
+    if lead_dist > 1e-10:
+        # Use fewer micro-steps when the lead-in is shorter than a full grid edge so
+        # replanning mid-tile does not spend ``steps_per_edge`` ticks crawling a
+        # fraction of a cell (which felt like a big slowdown vs. along-edge speed).
+        lead_steps = max(
+            1,
+            min(
+                steps_per_edge,
+                int(round(steps_per_edge * min(lead_dist, 1.0))),
+            ),
+        )
+        for step in range(1, lead_steps + 1):
+            t = step / lead_steps
             points.append(
                 (
                     origin_x + (first_x - origin_x) * t,
@@ -514,7 +527,7 @@ class TkinterRenderer:
         )
         if self._player_path_cooldown_s is not None:
             self._last_player_path_change_monotonic = time.monotonic()
-        self._schedule_player_motion()
+        self._advance_path_motion()
 
     def _schedule_player_motion(self) -> None:
         if not self._path_motion_queue:

@@ -15,8 +15,24 @@ class MotionAlongPathTests(unittest.TestCase):
             origin_y=0.0,
         )
 
+        # Short lead (0.25 grid units) uses one micro-step to (0,0), then four along the edge.
+        self.assertEqual(len(pts), 5)
+        self.assertAlmostEqual(pts[0][0], 0.0)
+        self.assertAlmostEqual(pts[0][1], 0.0)
+        self.assertAlmostEqual(pts[-1][0], 1.0)
+        self.assertAlmostEqual(pts[-1][1], 0.0)
+
+    def test_long_lead_in_uses_full_subdivision_count(self) -> None:
+        path = [(0, 0), (1, 0)]
+        pts = _motion_points_along_grid_path(
+            path,
+            steps_per_edge=4,
+            origin_x=-1.0,
+            origin_y=0.0,
+        )
+
         self.assertEqual(len(pts), 8)
-        self.assertAlmostEqual(pts[0][0], 0.1875)
+        self.assertAlmostEqual(pts[0][0], -0.75)
         self.assertAlmostEqual(pts[0][1], 0.0)
         self.assertAlmostEqual(pts[3][0], 0.0)
         self.assertAlmostEqual(pts[3][1], 0.0)
