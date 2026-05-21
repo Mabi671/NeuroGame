@@ -1,4 +1,7 @@
-"""Run a small isometric scene using placeholder sprites."""
+"""Run a small isometric scene using placeholder sprites.
+
+Click the map to move the player; paths avoid water tiles and boulder props.
+"""
 
 from neurogame import Entity, IsoCamera, IsometricScene, Tile
 from neurogame.tk_renderer import TkinterRenderer
@@ -27,6 +30,8 @@ def build_demo_scene() -> IsometricScene:
         scene.set_tile(tile)
     scene.add_entity(Entity(entity_id="player", x=4, y=4, sprite="player_placeholder"))
     scene.add_entity(Entity(entity_id="villager", x=6, y=3, sprite="npc_placeholder"))
+    scene.add_entity(Entity(entity_id="boulder-a", x=4, y=2, sprite="prop_boulder"))
+    scene.add_entity(Entity(entity_id="boulder-b", x=5, y=2, sprite="prop_boulder"))
     scene.add_entity(
         Entity(entity_id="spirit-air", x=3.4, y=5.2, z=0.2, sprite="spirit_placeholder")
     )

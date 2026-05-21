@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Iterable
 
 from neurogame.iso import IsoCamera, ScreenPoint
+from neurogame.pathfinding import find_path_on_grid
 from neurogame.sprites import SpriteDefinition, SpriteLibrary, build_default_sprite_library
 
 
@@ -111,6 +112,63 @@ class IsometricScene:
                     layer=entity.layer,
                 )
                 return
+        raise KeyError(f"Unknown entity '{entity_id}'")
+
+    def floor_grid_bounds(self) -> tuple[int, int, int, int] | None:
+        """Return ``(min_x, max_x, min_y, max_y)`` for ground tiles at ``z == 0``."""
+
+        ground = [tile for tile in self.tiles if tile.z == 0]
+        if not ground:
+            return None
+        xs = [tile.x for tile in ground]
+        ys = [tile.y for tile in ground]
+        return min(xs), max(xs), min(ys), max(ys)
+
+    def blocked_cells_for_pathfinding(self, *, moving_entity_id: str | None = None) -> set[tuple[int, int]]:
+        """Collect grid cells that pathfinding should not enter."""
+
+        blocked: set[tuple[int, int]] = set()
+
+        for tile in self.tiles:
+            if tile.z != 0:
+                continue
+            if self.sprites.get(tile.sprite).blocks_pathfinding:
+                blocked.add((tile.x, tile.y))
+
+        for entity in self.entities:
+            if moving_entity_id is not None and entity.entity_id == moving_entity_id:
+                continue
+            if not self.sprites.get(entity.sprite).blocks_pathfinding:
+                continue
+            cell = (int(round(entity.x)), int(round(entity.y)))
+            blocked.add(cell)
+
+        return blocked
+
+    def pathfind_entity_to_cell(
+        self,
+        entity_id: str,
+        goal_x: int,
+        goal_y: int,
+    ) -> list[tuple[int, int]] | None:
+        """Plan a 4-connected grid path for ``entity_id`` to ``(goal_x, goal_y)``."""
+
+        bounds = self.floor_grid_bounds()
+        if bounds is None:
+            return None
+
+        min_x, max_x, min_y, max_y = bounds
+        entity = self._entity_by_id(entity_id)
+        start = (int(round(entity.x)), int(round(entity.y)))
+        goal = (goal_x, goal_y)
+        blocked = self.blocked_cells_for_pathfinding(moving_entity_id=entity_id)
+
+        return find_path_on_grid(start, goal, min_x, max_x, min_y, max_y, blocked)
+
+    def _entity_by_id(self, entity_id: str) -> Entity:
+        for entity in self.entities:
+            if entity.entity_id == entity_id:
+                return entity
         raise KeyError(f"Unknown entity '{entity_id}'")
 
     def build_draw_commands(self) -> list[DrawCommand]:
