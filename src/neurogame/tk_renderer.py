@@ -8,6 +8,28 @@ from neurogame.engine import DrawCommand, IsometricScene
 from neurogame.sprites import SpriteDefinition
 
 
+def _motion_points_along_grid_path(
+    path: list[tuple[int, int]],
+    *,
+    steps_per_edge: int,
+) -> list[tuple[float, float]]:
+    """Linearly interpolate each grid edge into float positions for smooth motion."""
+
+    if steps_per_edge <= 0:
+        raise ValueError("steps_per_edge must be positive")
+    if len(path) < 2:
+        return []
+
+    points: list[tuple[float, float]] = []
+    for index in range(len(path) - 1):
+        x0, y0 = path[index]
+        x1, y1 = path[index + 1]
+        for step in range(1, steps_per_edge + 1):
+            t = step / steps_per_edge
+            points.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
+    return points
+
+
 class TkinterRenderer:
     """Render an isometric scene to a Tkinter canvas."""
 
@@ -37,10 +59,18 @@ class TkinterRenderer:
         for command in self.scene.build_draw_commands():
             self._draw_command(command)
 
-    def run(self, *, pathfinding_entity_id: str | None = "player") -> None:
-        self._path_queue: list[tuple[int, int]] = []
+    def run(
+        self,
+        *,
+        pathfinding_entity_id: str | None = "player",
+        path_steps_per_grid_edge: int = 14,
+        path_micro_step_ms: int = 12,
+    ) -> None:
+        self._path_motion_queue: list[tuple[float, float]] = []
         self._path_after_id: object | None = None
         self._pathfinding_entity_id = pathfinding_entity_id
+        self._path_steps_per_grid_edge = path_steps_per_grid_edge
+        self._path_micro_step_ms = path_micro_step_ms
         if pathfinding_entity_id:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
         self.render()
@@ -63,20 +93,23 @@ class TkinterRenderer:
             self.root.after_cancel(self._path_after_id)
             self._path_after_id = None
 
-        self._path_queue = list(path)[1:]
-        self._advance_path_step()
+        self._path_motion_queue = _motion_points_along_grid_path(
+            path,
+            steps_per_edge=self._path_steps_per_grid_edge,
+        )
+        self._advance_path_motion()
 
-    def _advance_path_step(self) -> None:
+    def _advance_path_motion(self) -> None:
         entity_id = self._pathfinding_entity_id
-        if not entity_id or not self._path_queue:
+        if not entity_id or not self._path_motion_queue:
             return
 
-        next_x, next_y = self._path_queue.pop(0)
+        next_x, next_y = self._path_motion_queue.pop(0)
         self.scene.move_entity(entity_id, float(next_x), float(next_y))
         self.render()
 
-        if self._path_queue:
-            self._path_after_id = self.root.after(120, self._advance_path_step)
+        if self._path_motion_queue:
+            self._path_after_id = self.root.after(self._path_micro_step_ms, self._advance_path_motion)
         else:
             self._path_after_id = None
 

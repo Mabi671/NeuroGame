@@ -94,6 +94,14 @@ def build_default_sprite_library() -> SpriteLibrary:
                 shape="diamond",
             ),
             SpriteDefinition(
+                name="tile_blue_patch",
+                width=64,
+                height=32,
+                fill="#6aa6ff",
+                outline="#3a5fbf",
+                shape="diamond",
+            ),
+            SpriteDefinition(
                 name="player_placeholder",
                 width=32,
                 height=56,
