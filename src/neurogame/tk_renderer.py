@@ -2,7 +2,7 @@
 
 When ``tile_edit_menu`` is enabled in ``run()``, a **Painting** panel is shown
 above the canvas with mode radios and a ``Treeview`` brush table (select a row,
-then click the map in paint mode).
+then click or **click-drag** on the map in paint mode).
 
 ``player_path_cooldown_s`` (default 0.3) enforces a minimum delay between
 accepted player spirit path changes to avoid rapid replanning from click spam.
@@ -164,18 +164,21 @@ class TkinterRenderer:
             else path_micro_step_ms
         )
         self._tile_edit_menu = tile_edit_menu
+        self._paint_drag_last_cell: tuple[int, int] | None = None
         self._input_mode_var = StringVar(master=self.root, value="move")
         self._brush_sprite_var = StringVar(master=self.root, value="tile_grass")
         if tile_edit_menu:
             paint_panel = ttk.LabelFrame(
                 self.root,
-                text="Painting — choose interaction mode and a floor brush, then click the map",
+                text="Painting — choose interaction mode and a floor brush, then click or drag on the map",
             )
             paint_panel.pack(side=tk.TOP, fill=tk.X, padx=6, pady=(6, 2))
             self._build_tile_paint_panel(paint_panel)
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         if pathfinding_entity_id or tile_edit_menu:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
+        if tile_edit_menu:
+            self.canvas.bind("<B1-Motion>", self._on_canvas_paint_b1_motion)
         self.render()
         if self._auto_spirit_id_list:
             self._schedule_autonomous_spirits()
@@ -248,20 +251,55 @@ class TkinterRenderer:
         self._brush_sprite_var.set(sprite_id)
         self.render()
 
-    def _paint_tile_at_screen(self, screen_x: float, screen_y: float) -> None:
+    def _floor_cell_at_screen(self, screen_x: float, screen_y: float) -> tuple[int, int] | None:
+        """Grid cell under the pointer, or ``None`` if off the floor grid."""
+
         bounds = self.scene.floor_grid_bounds()
         if bounds is None:
-            return
+            return None
         min_x, max_x, min_y, max_y = bounds
         grid = self.scene.camera.screen_to_grid(screen_x, screen_y)
         gx = int(round(grid.x))
         gy = int(round(grid.y))
         if not (min_x <= gx <= max_x and min_y <= gy <= max_y):
+            return None
+        return (gx, gy)
+
+    def _paint_tile_at_screen(self, screen_x: float, screen_y: float) -> None:
+        cell = self._floor_cell_at_screen(screen_x, screen_y)
+        if cell is None:
+            self._paint_drag_last_cell = None
             return
+        gx, gy = cell
         sprite_name = self._brush_sprite_var.get()
         self.scene.sprites.get(sprite_name)
         self.scene.set_tile(Tile(x=gx, y=gy, z=0, sprite=sprite_name))
+        self._paint_drag_last_cell = cell
         self.render()
+
+    def _paint_tile_drag(self, screen_x: float, screen_y: float) -> None:
+        """Paint during ``B1-Motion``; only updates when the cell changes."""
+
+        cell = self._floor_cell_at_screen(screen_x, screen_y)
+        if cell is None:
+            return
+        if cell == self._paint_drag_last_cell:
+            return
+        gx, gy = cell
+        sprite_name = self._brush_sprite_var.get()
+        self.scene.sprites.get(sprite_name)
+        self.scene.set_tile(Tile(x=gx, y=gy, z=0, sprite=sprite_name))
+        self._paint_drag_last_cell = cell
+        self.render()
+
+    def _on_canvas_paint_b1_motion(self, event: object) -> None:
+        if not self._tile_edit_menu or self._input_mode_var.get() != "paint":
+            return
+        x = getattr(event, "x", None)
+        y = getattr(event, "y", None)
+        if x is None or y is None:
+            return
+        self._paint_tile_drag(float(x), float(y))
 
     def _on_canvas_click(self, event) -> None:
         if self._tile_edit_menu and self._input_mode_var.get() == "paint":
