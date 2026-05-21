@@ -2,11 +2,15 @@
 
 When ``tile_edit_menu`` is enabled in ``run()``, the window gets **Mode** and
 **Brush** menus so the player can paint floor tiles (``Paint tiles`` + click).
+
+``player_path_cooldown_s`` (default 0.3) enforces a minimum delay between
+accepted player spirit path changes to avoid rapid replanning from click spam.
 """
 
 from __future__ import annotations
 
 import random
+import time
 from tkinter import Canvas, Menu, StringVar, Tk
 
 from neurogame.engine import DrawCommand, IsometricScene, Tile
@@ -99,9 +103,12 @@ class TkinterRenderer:
         autonomous_spirit_ids: tuple[str, ...] = (),
         autonomous_spirit_tick_ms: int | None = None,
         tile_edit_menu: bool = True,
+        player_path_cooldown_s: float | None = 0.3,
     ) -> None:
         self._path_motion_queue: list[tuple[float, float]] = []
         self._path_after_id: object | None = None
+        self._player_path_cooldown_s = player_path_cooldown_s
+        self._last_player_path_change_monotonic: float | None = None
         self._pathfinding_entity_id = pathfinding_entity_id
         self._highlight_entity_id = pathfinding_entity_id
         self._path_steps_per_grid_edge = path_steps_per_grid_edge
@@ -181,6 +188,12 @@ class TkinterRenderer:
         if not entity_id or not self.scene.has_entity(entity_id):
             return
 
+        if self._player_path_cooldown_s is not None:
+            now = time.monotonic()
+            if self._last_player_path_change_monotonic is not None:
+                if now - self._last_player_path_change_monotonic < self._player_path_cooldown_s:
+                    return
+
         grid = self.scene.camera.screen_to_grid(float(event.x), float(event.y))
         goal_x = int(round(grid.x))
         goal_y = int(round(grid.y))
@@ -197,6 +210,8 @@ class TkinterRenderer:
             path,
             steps_per_edge=self._path_steps_per_grid_edge,
         )
+        if self._player_path_cooldown_s is not None:
+            self._last_player_path_change_monotonic = time.monotonic()
         self._schedule_player_motion()
 
     def _schedule_player_motion(self) -> None:
