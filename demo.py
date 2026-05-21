@@ -1,7 +1,8 @@
 """Run a small isometric scene using placeholder sprites.
 
-The floor is **all grass** until you use **Mode → Paint tiles** and **Brush** to
-place water, stone, blue, or red hazard tiles. Click the map to move the cyan
+The floor is **all grass** until you use the in-window **Painting** panel
+(**Paint tiles** mode and a row in the brush table) to place water, stone, blue,
+or red hazard tiles. Click the map to move the cyan
 player spirit (gold ring); paths avoid blocking tiles, boulders, and other
 spirits. Red hazard tiles drain half max HP when entered; at 0 HP a spirit is
 removed. Ten slower wandering spirits roam with health bars.

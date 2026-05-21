@@ -1,7 +1,8 @@
 """Tkinter renderer for the isometric engine demo.
 
-When ``tile_edit_menu`` is enabled in ``run()``, the window gets **Mode** and
-**Brush** menus so the player can paint floor tiles (``Paint tiles`` + click).
+When ``tile_edit_menu`` is enabled in ``run()``, a **Painting** panel is shown
+above the canvas with mode radios and a ``Treeview`` brush table (select a row,
+then click the map in paint mode).
 
 ``player_path_cooldown_s`` (default 0.3) enforces a minimum delay between
 accepted player spirit path changes to avoid rapid replanning from click spam.
@@ -19,7 +20,8 @@ from __future__ import annotations
 
 import random
 import time
-from tkinter import Canvas, Menu, StringVar, Tk
+import tkinter as tk
+from tkinter import Canvas, StringVar, Tk, ttk
 
 from neurogame.engine import DrawCommand, IsometricScene, Tile
 from neurogame.sprites import SpriteDefinition
@@ -77,12 +79,12 @@ def _queued_step_targets_blocked_cell(
     return (int(round(next_x)), int(round(next_y))) in blocked
 
 
-TILE_BRUSH_MENU: tuple[tuple[str, str], ...] = (
-    ("tile_grass", "Grass"),
-    ("tile_water", "Water (blocks path)"),
-    ("tile_stone", "Stone"),
-    ("tile_blue_patch", "Blue (blocks path)"),
-    ("tile_red_drain", "Red hazard (drains HP)"),
+TILE_BRUSH_MENU: tuple[tuple[str, str, str], ...] = (
+    ("tile_grass", "Grass", "Walkable"),
+    ("tile_water", "Water", "Blocks pathfinding"),
+    ("tile_stone", "Stone", "Walkable"),
+    ("tile_blue_patch", "Blue patch", "Blocks pathfinding"),
+    ("tile_red_drain", "Red hazard", "Walkable; drains spirit HP"),
 )
 
 
@@ -110,7 +112,7 @@ class TkinterRenderer:
             background=background,
             highlightthickness=0,
         )
-        self.canvas.pack(fill="both", expand=True)
+        self._brush_table: ttk.Treeview | None = None
 
     def render(self) -> None:
         self.canvas.delete("all")
@@ -165,7 +167,13 @@ class TkinterRenderer:
         self._input_mode_var = StringVar(master=self.root, value="move")
         self._brush_sprite_var = StringVar(master=self.root, value="tile_grass")
         if tile_edit_menu:
-            self._build_tile_edit_menubar()
+            paint_panel = ttk.LabelFrame(
+                self.root,
+                text="Painting — choose interaction mode and a floor brush, then click the map",
+            )
+            paint_panel.pack(side=tk.TOP, fill=tk.X, padx=6, pady=(6, 2))
+            self._build_tile_paint_panel(paint_panel)
+        self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         if pathfinding_entity_id or tile_edit_menu:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
         self.render()
@@ -173,34 +181,72 @@ class TkinterRenderer:
             self._schedule_autonomous_spirits()
         self.root.mainloop()
 
-    def _build_tile_edit_menubar(self) -> None:
-        menubar = Menu(self.root)
-        mode_menu = Menu(menubar, tearoff=0)
-        mode_menu.add_radiobutton(
-            label="Move spirit",
+    def _build_tile_paint_panel(self, parent: ttk.LabelFrame) -> None:
+        body = ttk.Frame(parent)
+        body.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        mode_box = ttk.LabelFrame(body, text="Mode")
+        mode_box.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
+        ttk.Radiobutton(
+            mode_box,
+            text="Move spirit",
             variable=self._input_mode_var,
             value="move",
             command=self.render,
-        )
-        mode_menu.add_radiobutton(
-            label="Paint tiles",
+        ).pack(anchor=tk.W, padx=6, pady=2)
+        ttk.Radiobutton(
+            mode_box,
+            text="Paint tiles",
             variable=self._input_mode_var,
             value="paint",
             command=self.render,
+        ).pack(anchor=tk.W, padx=6, pady=2)
+
+        table_box = ttk.LabelFrame(body, text="Floor tile brush (select one row)")
+        table_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        columns = ("sprite", "name", "path")
+        tree = ttk.Treeview(
+            table_box,
+            columns=columns,
+            show="headings",
+            height=len(TILE_BRUSH_MENU),
+            selectmode="browse",
         )
-        menubar.add_cascade(label="Mode", menu=mode_menu)
+        tree.heading("sprite", text="Sprite id")
+        tree.heading("name", text="Name")
+        tree.heading("path", text="Path / hazard")
+        tree.column("sprite", width=130, stretch=False, minwidth=80)
+        tree.column("name", width=120, stretch=False, minwidth=70)
+        tree.column("path", width=260, stretch=True, minwidth=120)
 
-        brush_menu = Menu(menubar, tearoff=0)
-        for sprite_name, label in TILE_BRUSH_MENU:
-            brush_menu.add_radiobutton(
-                label=label,
-                variable=self._brush_sprite_var,
-                value=sprite_name,
-                command=self.render,
-            )
-        menubar.add_cascade(label="Brush", menu=brush_menu)
+        for sprite_id, name, path_hint in TILE_BRUSH_MENU:
+            tree.insert("", tk.END, iid=sprite_id, values=(sprite_id, name, path_hint))
 
-        self.root.config(menu=menubar)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scroll = ttk.Scrollbar(table_box, orient=tk.VERTICAL, command=tree.yview)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        tree.configure(yscrollcommand=scroll.set)
+
+        self._brush_table = tree
+        tree.bind("<<TreeviewSelect>>", self._on_brush_table_select)
+
+        default_brush = self._brush_sprite_var.get()
+        if tree.exists(default_brush):
+            tree.selection_set(default_brush)
+            tree.focus(default_brush)
+            tree.see(default_brush)
+
+    def _on_brush_table_select(self, _event: object | None = None) -> None:
+        tree = self._brush_table
+        if tree is None:
+            return
+        selection = tree.selection()
+        if not selection:
+            return
+        sprite_id = selection[0]
+        self._brush_sprite_var.set(sprite_id)
+        self.render()
 
     def _paint_tile_at_screen(self, screen_x: float, screen_y: float) -> None:
         bounds = self.scene.floor_grid_bounds()
