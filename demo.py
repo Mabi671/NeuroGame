@@ -1,9 +1,9 @@
 """Run a small isometric scene using placeholder sprites.
 
-The floor is **all grass** until you use the in-window **Painting** panel
+The floor is **all grass** until you use the in-window **Floor palette** panel
 (**Paint tiles** mode and a row in the brush table) to place water, stone, blue,
 or red hazard tiles by **clicking or click-dragging** on the map. Click the map to move the cyan
-player spirit (gold ring); paths avoid blocking tiles, boulders, and other
+controllable spirit (gold ring); paths avoid blocking tiles, boulders, and other
 spirits. Red hazard tiles drain half max HP when entered; at 0 HP a spirit is
 removed. Ten slower wandering spirits roam with health bars.
 """
@@ -33,8 +33,6 @@ def build_demo_scene() -> tuple[IsometricScene, tuple[str, ...]]:
 
     rng = random.Random()
 
-    scene.add_entity(Entity(entity_id="player", x=11, y=11, sprite="player_placeholder"))
-    scene.add_entity(Entity(entity_id="villager", x=17, y=9, sprite="npc_placeholder"))
     scene.add_entity(Entity(entity_id="boulder-a", x=11, y=6, sprite="prop_boulder"))
     scene.add_entity(Entity(entity_id="boulder-b", x=14, y=6, sprite="prop_boulder"))
     scene.add_entity(
@@ -52,8 +50,6 @@ def build_demo_scene() -> tuple[IsometricScene, tuple[str, ...]]:
 
     static_blocked = scene.blocked_cells_for_pathfinding()
     reserved_spawn = {
-        (11, 11),
-        (17, 9),
         (11, 6),
         (14, 6),
         (8, 12),

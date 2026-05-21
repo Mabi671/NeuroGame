@@ -1,8 +1,8 @@
 """Tkinter renderer for the isometric engine demo.
 
-When ``tile_edit_menu`` is enabled in ``run()``, a **Painting** panel is shown
-above the canvas with mode radios and a ``Treeview`` brush table (select a row,
-then click or **click-drag** on the map in paint mode).
+When ``tile_edit_menu`` is enabled in ``run()``, a styled **Floor palette** panel
+sits above the canvas with mode radios and a ``Treeview`` brush table (select a
+row, then click or **click-drag** on the map in paint mode).
 
 ``player_path_cooldown_s`` (default 0.3) enforces a minimum delay between
 accepted player spirit path changes to avoid rapid replanning from click spam.
@@ -88,6 +88,108 @@ TILE_BRUSH_MENU: tuple[tuple[str, str, str], ...] = (
 )
 
 
+def _apply_paint_panel_styles(root: tk.Misc) -> None:
+    """Dark slate + teal accents to match the isometric canvas (#111827)."""
+
+    style = ttk.Style(root)
+    try:
+        style.theme_use("clam")
+    except tk.TclError:
+        pass
+
+    panel = "#1a2332"
+    inner = "#222b3d"
+    text = "#e2e8f0"
+    muted = "#94a3b8"
+    accent = "#5eead4"
+    accent_dark = "#0f766e"
+    tree_bg = "#0c1220"
+    border = "#334155"
+
+    style.configure("Palette.TFrame", background=panel)
+    style.configure(
+        "Palette.TLabelframe",
+        background=panel,
+        foreground=text,
+        bordercolor=border,
+        borderwidth=1,
+        relief="solid",
+        darkcolor=border,
+        lightcolor=border,
+    )
+    style.configure(
+        "Palette.TLabelframe.Label",
+        background=panel,
+        foreground=accent,
+        font=("", 11, "bold"),
+    )
+    style.configure(
+        "PaletteInner.TLabelframe",
+        background=inner,
+        foreground=text,
+        bordercolor=border,
+        borderwidth=1,
+        relief="solid",
+        darkcolor=border,
+        lightcolor=border,
+    )
+    style.configure(
+        "PaletteInner.TLabelframe.Label",
+        background=inner,
+        foreground=muted,
+        font=("", 9, "bold"),
+    )
+    style.configure(
+        "Palette.TRadiobutton",
+        background=inner,
+        foreground=text,
+        focuscolor=accent,
+        indicatorrelief="flat",
+        borderwidth=0,
+    )
+    style.map(
+        "Palette.TRadiobutton",
+        background=[("active", panel), ("selected", inner), ("!selected", inner)],
+        indicatorcolor=[("selected", accent), ("!selected", tree_bg)],
+    )
+    style.configure(
+        "Palette.Treeview",
+        background=tree_bg,
+        fieldbackground=tree_bg,
+        foreground=text,
+        borderwidth=0,
+        rowheight=26,
+    )
+    style.configure(
+        "Palette.Treeview.Heading",
+        background=accent_dark,
+        foreground=accent,
+        relief="flat",
+        borderwidth=0,
+        font=("", 10, "bold"),
+    )
+    style.map(
+        "Palette.Treeview",
+        background=[("selected", accent_dark)],
+        foreground=[("selected", "#ecfeff")],
+    )
+    style.configure(
+        "Palette.Vertical.TScrollbar",
+        background=panel,
+        troughcolor=tree_bg,
+        bordercolor=border,
+        arrowcolor=muted,
+        relief="flat",
+        borderwidth=0,
+    )
+    style.map(
+        "Palette.Vertical.TScrollbar",
+        background=[("active", inner), ("pressed", accent_dark)],
+        arrowcolor=[("active", accent)],
+    )
+    style.configure("Palette.TSeparator", background=accent_dark)
+
+
 class TkinterRenderer:
     """Render an isometric scene to a Tkinter canvas."""
 
@@ -168,12 +270,23 @@ class TkinterRenderer:
         self._input_mode_var = StringVar(master=self.root, value="move")
         self._brush_sprite_var = StringVar(master=self.root, value="tile_grass")
         if tile_edit_menu:
+            self.root.configure(background="#111827")
+            _apply_paint_panel_styles(self.root)
+            shell = ttk.Frame(self.root, style="Palette.TFrame")
+            shell.pack(side=tk.TOP, fill=tk.X)
             paint_panel = ttk.LabelFrame(
-                self.root,
-                text="Painting — choose interaction mode and a floor brush, then click or drag on the map",
+                shell,
+                text="Floor palette — brush + paint mode, then click or drag the map",
+                style="Palette.TLabelframe",
             )
-            paint_panel.pack(side=tk.TOP, fill=tk.X, padx=6, pady=(6, 2))
+            paint_panel.pack(fill=tk.BOTH, expand=True, padx=12, pady=(10, 8))
             self._build_tile_paint_panel(paint_panel)
+            ttk.Separator(self.root, orient=tk.HORIZONTAL, style="Palette.TSeparator").pack(
+                side=tk.TOP,
+                fill=tk.X,
+                padx=20,
+                pady=(0, 6),
+            )
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         if pathfinding_entity_id or tile_edit_menu:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
@@ -185,27 +298,29 @@ class TkinterRenderer:
         self.root.mainloop()
 
     def _build_tile_paint_panel(self, parent: ttk.LabelFrame) -> None:
-        body = ttk.Frame(parent)
-        body.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        body = ttk.Frame(parent, style="Palette.TFrame")
+        body.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
 
-        mode_box = ttk.LabelFrame(body, text="Mode")
-        mode_box.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
+        mode_box = ttk.LabelFrame(body, text="Mode", style="PaletteInner.TLabelframe")
+        mode_box.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
         ttk.Radiobutton(
             mode_box,
             text="Move spirit",
+            style="Palette.TRadiobutton",
             variable=self._input_mode_var,
             value="move",
             command=self.render,
-        ).pack(anchor=tk.W, padx=6, pady=2)
+        ).pack(anchor=tk.W, padx=8, pady=4)
         ttk.Radiobutton(
             mode_box,
             text="Paint tiles",
+            style="Palette.TRadiobutton",
             variable=self._input_mode_var,
             value="paint",
             command=self.render,
-        ).pack(anchor=tk.W, padx=6, pady=2)
+        ).pack(anchor=tk.W, padx=8, pady=4)
 
-        table_box = ttk.LabelFrame(body, text="Floor tile brush (select one row)")
+        table_box = ttk.LabelFrame(body, text="Brushes", style="PaletteInner.TLabelframe")
         table_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         columns = ("sprite", "name", "path")
@@ -215,6 +330,7 @@ class TkinterRenderer:
             show="headings",
             height=len(TILE_BRUSH_MENU),
             selectmode="browse",
+            style="Palette.Treeview",
         )
         tree.heading("sprite", text="Sprite id")
         tree.heading("name", text="Name")
@@ -223,12 +339,20 @@ class TkinterRenderer:
         tree.column("name", width=120, stretch=False, minwidth=70)
         tree.column("path", width=260, stretch=True, minwidth=120)
 
-        for sprite_id, name, path_hint in TILE_BRUSH_MENU:
-            tree.insert("", tk.END, iid=sprite_id, values=(sprite_id, name, path_hint))
+        tree.tag_configure("p_even", background="#0c1220")
+        tree.tag_configure("p_odd", background="#152032")
+        for index, (sprite_id, name, path_hint) in enumerate(TILE_BRUSH_MENU):
+            tag = "p_even" if index % 2 == 0 else "p_odd"
+            tree.insert("", tk.END, iid=sprite_id, values=(sprite_id, name, path_hint), tags=(tag,))
 
-        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll = ttk.Scrollbar(table_box, orient=tk.VERTICAL, command=tree.yview)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 2), pady=4)
+        scroll = ttk.Scrollbar(
+            table_box,
+            orient=tk.VERTICAL,
+            style="Palette.Vertical.TScrollbar",
+            command=tree.yview,
+        )
+        scroll.pack(side=tk.RIGHT, fill=tk.Y, pady=4)
         tree.configure(yscrollcommand=scroll.set)
 
         self._brush_table = tree
