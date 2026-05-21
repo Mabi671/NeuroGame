@@ -197,6 +197,14 @@ class TkinterRenderer:
             self._draw_pawn(command.screen.x, command.screen.y, sprite)
         elif sprite.shape == "spirit":
             self._draw_spirit(command.screen.x, command.screen.y, sprite)
+            if command.health is not None and command.max_health is not None:
+                self._draw_spirit_health_bar(
+                    command.screen.x,
+                    command.screen.y,
+                    sprite,
+                    command.health,
+                    command.max_health,
+                )
         else:
             self._draw_box(command.screen.x, command.screen.y, sprite)
 
@@ -298,6 +306,43 @@ class TkinterRenderer:
             fill=sprite.outline,
             width=2,
             smooth=True,
+        )
+
+    def _draw_spirit_health_bar(
+        self,
+        x: float,
+        y: float,
+        sprite: SpriteDefinition,
+        health: float,
+        max_health: float,
+    ) -> None:
+        """Thin bar above the spirit body."""
+
+        left, top = self._anchored_bounds(x, y, sprite)
+        bar_width = sprite.width
+        bar_height = 6
+        gap = 5
+        bar_top = top - bar_height - gap
+        ratio = 0.0 if max_health <= 0 else max(0.0, min(1.0, health / max_health))
+
+        self.canvas.create_rectangle(
+            left,
+            bar_top,
+            left + bar_width,
+            bar_top + bar_height,
+            fill="#111827",
+            outline="#374151",
+            width=1,
+        )
+        inner = 2
+        inner_width = max(0.0, (bar_width - inner * 2) * ratio)
+        self.canvas.create_rectangle(
+            left + inner,
+            bar_top + inner,
+            left + inner + inner_width,
+            bar_top + bar_height - inner,
+            fill="#34d399",
+            outline="",
         )
 
     def _draw_spirit_highlight_ring(self, x: float, y: float, sprite: SpriteDefinition) -> None:

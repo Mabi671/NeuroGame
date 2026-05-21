@@ -30,6 +30,8 @@ class Entity:
     z: float = 0.0
     sprite: str = "player_placeholder"
     layer: int = 10
+    health: float | None = None
+    max_health: float | None = None
 
 
 @dataclass(frozen=True)
@@ -42,6 +44,8 @@ class DrawCommand:
     kind: str
     object_id: str
     grid_position: tuple[float, float, float]
+    health: float | None = None
+    max_health: float | None = None
 
 
 @dataclass
@@ -115,6 +119,8 @@ class IsometricScene:
                     z=new_z,
                     sprite=entity.sprite,
                     layer=entity.layer,
+                    health=entity.health,
+                    max_health=entity.max_health,
                 )
                 return
         raise KeyError(f"Unknown entity '{entity_id}'")
@@ -209,6 +215,8 @@ class IsometricScene:
                     kind="entity",
                     object_id=entity.entity_id,
                     grid_position=(entity.x, entity.y, entity.z),
+                    health=entity.health,
+                    max_health=entity.max_health,
                 )
             )
 

@@ -33,6 +33,8 @@ class IsometricSceneTests(unittest.TestCase):
         self.assertEqual(commands[1].object_id, "hero")
         self.assertEqual(commands[1].screen.x, 10)
         self.assertEqual(commands[1].screen.y, 20)
+        self.assertIsNone(commands[1].health)
+        self.assertIsNone(commands[1].max_health)
 
     def test_unknown_sprites_are_rejected_when_added(self) -> None:
         scene = IsometricScene()
