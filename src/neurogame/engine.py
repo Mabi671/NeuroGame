@@ -97,6 +97,12 @@ class IsometricScene:
         self.sprites.get(entity.sprite)
         self.entities.append(entity)
 
+    def get_entity(self, entity_id: str) -> Entity:
+        for entity in self.entities:
+            if entity.entity_id == entity_id:
+                return entity
+        raise KeyError(f"Unknown entity '{entity_id}'")
+
     def move_entity(self, entity_id: str, x: float, y: float, z: float = 0.0) -> None:
         """Move an entity while preserving its other metadata."""
 

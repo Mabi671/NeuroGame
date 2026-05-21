@@ -1,6 +1,6 @@
 """Run a small isometric scene using placeholder sprites."""
 
-from neurogame import Entity, IsoCamera, IsometricScene, Tile
+from neurogame import AirSpirit, Entity, IsoCamera, IsometricScene, Tile
 from neurogame.tk_renderer import TkinterRenderer
 
 
@@ -27,9 +27,7 @@ def build_demo_scene() -> IsometricScene:
         scene.set_tile(tile)
     scene.add_entity(Entity(entity_id="player", x=4, y=4, sprite="player_placeholder"))
     scene.add_entity(Entity(entity_id="villager", x=6, y=3, sprite="npc_placeholder"))
-    scene.add_entity(
-        Entity(entity_id="spirit-air", x=3.4, y=5.2, z=0.2, sprite="spirit_placeholder")
-    )
+    AirSpirit.spawn(scene, entity_id="spirit-air", x=3, y=5)
     scene.add_entity(
         Entity(
             entity_id="spirit-fire",
@@ -51,5 +49,55 @@ def build_demo_scene() -> IsometricScene:
     return scene
 
 
+def attach_spirit_controls(renderer: TkinterRenderer, spirit: AirSpirit) -> None:
+    animation = {"running": False}
+
+    def redraw() -> None:
+        renderer.render()
+        spirit.draw_overlay(renderer.canvas)
+        renderer.canvas.create_text(
+            18,
+            18,
+            anchor="nw",
+            fill="#f8fafc",
+            text="Right-click the blue air spirit to select it. Left-click a tile to move.",
+        )
+
+    def animate_step() -> None:
+        if spirit.step_along_path():
+            redraw()
+            renderer.root.after(140, animate_step)
+            return
+        animation["running"] = False
+        redraw()
+
+    def begin_animation() -> None:
+        if animation["running"]:
+            return
+        animation["running"] = True
+        animate_step()
+
+    def on_right_click(event: object) -> None:
+        if not spirit.select_at_screen(event.x, event.y):
+            spirit.clear_selection()
+        redraw()
+
+    def on_left_click(event: object) -> None:
+        if not spirit.selected:
+            return
+        path = spirit.travel_to_screen(event.x, event.y)
+        redraw()
+        if path:
+            begin_animation()
+
+    renderer.canvas.bind("<Button-3>", on_right_click)
+    renderer.canvas.bind("<Button-1>", on_left_click)
+    redraw()
+
+
 if __name__ == "__main__":
-    TkinterRenderer(build_demo_scene()).run()
+    demo_scene = build_demo_scene()
+    air_spirit = AirSpirit(scene=demo_scene, entity_id="spirit-air")
+    demo_renderer = TkinterRenderer(demo_scene)
+    attach_spirit_controls(demo_renderer, air_spirit)
+    demo_renderer.root.mainloop()

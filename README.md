@@ -7,6 +7,7 @@ A Python game prototype with a small isometric graphics engine foundation.
 - Isometric camera projection from grid coordinates to screen coordinates.
 - A scene graph for tiles and entities.
 - Renderer-neutral draw commands with isometric draw ordering.
+- A* pathfinding over the tile grid for click-to-move actors.
 - A Tkinter demo renderer that uses only the Python standard library.
 - Placeholder sprite definitions, including spirit placeholders you can replace
   with final art later.
@@ -18,7 +19,8 @@ PYTHONPATH=src python3 demo.py
 ```
 
 The demo opens a Tkinter window with an isometric map, character placeholders,
-and three spirit placeholders.
+and three spirit placeholders. Right-click the blue air spirit to select it, then
+left-click a destination tile to pathfind and move there. Water tiles are blocked.
 
 ## Engine quick start
 
