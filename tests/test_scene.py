@@ -23,7 +23,7 @@ class IsometricSceneTests(unittest.TestCase):
         scene = IsometricScene.flat_map(
             1,
             1,
-            camera=IsoCamera(tile_width=64, tile_height=32, origin_x=10, origin_y=20),
+            camera=IsoCamera(tile_width=32, tile_height=16, origin_x=5, origin_y=10),
         )
         scene.add_entity(Entity(entity_id="hero", x=0, y=0, sprite="player_placeholder"))
 
@@ -31,8 +31,10 @@ class IsometricSceneTests(unittest.TestCase):
 
         self.assertEqual([command.kind for command in commands], ["tile", "entity"])
         self.assertEqual(commands[1].object_id, "hero")
-        self.assertEqual(commands[1].screen.x, 10)
-        self.assertEqual(commands[1].screen.y, 20)
+        self.assertEqual(commands[1].screen.x, 5)
+        self.assertEqual(commands[1].screen.y, 10)
+        self.assertIsNone(commands[1].health)
+        self.assertIsNone(commands[1].max_health)
 
     def test_unknown_sprites_are_rejected_when_added(self) -> None:
         scene = IsometricScene()

@@ -31,11 +31,11 @@ class IsoCamera:
     on screen.
     """
 
-    tile_width: int = 64
-    tile_height: int = 32
+    tile_width: int = 32
+    tile_height: int = 16
     origin_x: float = 0.0
     origin_y: float = 0.0
-    elevation_height: int = 32
+    elevation_height: int = 16
 
     def __post_init__(self) -> None:
         if self.tile_width <= 0:
