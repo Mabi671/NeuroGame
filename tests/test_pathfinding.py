@@ -53,15 +53,38 @@ class ScenePathfindingTests(unittest.TestCase):
 
         self.assertIn((0, 0), blocked)
 
-    def test_spirit_fire_sprite_does_not_block_pathfinding_cell(self) -> None:
+    def test_spirit_placeholder_blocks_pathfinding_cell(self) -> None:
         scene = IsometricScene.flat_map(3, 3)
         scene.add_entity(
-            Entity(entity_id="ward", x=1, y=1, sprite="spirit_fire_placeholder"),
+            Entity(entity_id="s", x=1, y=1, sprite="spirit_placeholder"),
         )
 
         blocked = scene.blocked_cells_for_pathfinding()
 
-        self.assertNotIn((1, 1), blocked)
+        self.assertIn((1, 1), blocked)
+
+    def test_other_spirit_blocks_path_for_moving_spirit(self) -> None:
+        scene = IsometricScene.flat_map(3, 3)
+        scene.add_entity(Entity(entity_id="mover", x=0, y=1, sprite="spirit_placeholder"))
+        scene.add_entity(
+            Entity(entity_id="other", x=1, y=1, sprite="spirit_forest_placeholder"),
+        )
+
+        path = scene.pathfind_entity_to_cell("mover", 2, 1)
+
+        self.assertIsNotNone(path)
+        assert path is not None
+        self.assertEqual(path[0], (0, 1))
+        self.assertEqual(path[-1], (2, 1))
+        self.assertNotIn((1, 1), path)
+
+    def test_moving_spirit_is_not_blocked_by_own_cell(self) -> None:
+        scene = IsometricScene.flat_map(2, 1)
+        scene.add_entity(Entity(entity_id="m", x=0, y=0, sprite="spirit_placeholder"))
+
+        blocked = scene.blocked_cells_for_pathfinding(moving_entity_id="m")
+
+        self.assertNotIn((0, 0), blocked)
 
     def test_path_routes_around_water_and_boulder_sprites(self) -> None:
         scene = IsometricScene.flat_map(5, 3)

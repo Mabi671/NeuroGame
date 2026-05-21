@@ -44,6 +44,7 @@ class TkinterRenderer:
         background: str = "#111827",
     ) -> None:
         self.scene = scene
+        self._highlight_entity_id: str | None = None
         self.root = Tk()
         self.root.title(title)
         self.canvas = Canvas(
@@ -57,8 +58,23 @@ class TkinterRenderer:
 
     def render(self) -> None:
         self.canvas.delete("all")
-        for command in self.scene.build_draw_commands():
+        commands = self.scene.build_draw_commands()
+        for command in commands:
             self._draw_command(command)
+        highlight_id = self._highlight_entity_id
+        if highlight_id:
+            for command in commands:
+                if (
+                    command.kind == "entity"
+                    and command.object_id == highlight_id
+                    and command.sprite.shape == "spirit"
+                ):
+                    self._draw_spirit_highlight_ring(
+                        command.screen.x,
+                        command.screen.y,
+                        command.sprite,
+                    )
+                    break
 
     def run(
         self,
@@ -72,6 +88,7 @@ class TkinterRenderer:
         self._path_motion_queue: list[tuple[float, float]] = []
         self._path_after_id: object | None = None
         self._pathfinding_entity_id = pathfinding_entity_id
+        self._highlight_entity_id = pathfinding_entity_id
         self._path_steps_per_grid_edge = path_steps_per_grid_edge
         self._path_micro_step_ms = path_micro_step_ms
         self._auto_spirit_ids = tuple(autonomous_spirit_ids)
@@ -158,7 +175,7 @@ class TkinterRenderer:
             return
 
         min_x, max_x, min_y, max_y = bounds
-        for _ in range(48):
+        for _ in range(120):
             goal_x = random.randint(min_x, max_x)
             goal_y = random.randint(min_y, max_y)
             path = self.scene.pathfind_entity_to_cell(entity_id, goal_x, goal_y)
@@ -281,6 +298,23 @@ class TkinterRenderer:
             fill=sprite.outline,
             width=2,
             smooth=True,
+        )
+
+    def _draw_spirit_highlight_ring(self, x: float, y: float, sprite: SpriteDefinition) -> None:
+        """Gold ring drawn only for the player-controlled spirit."""
+
+        left, top = self._anchored_bounds(x, y, sprite)
+        right = left + sprite.width
+        bottom = top + sprite.height
+        margin = 10
+        self.canvas.create_oval(
+            left - margin,
+            top - margin,
+            right + margin,
+            bottom + margin,
+            fill="",
+            outline="#f5d547",
+            width=3,
         )
 
     def _draw_box(self, x: float, y: float, sprite: SpriteDefinition) -> None:

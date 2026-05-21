@@ -1,9 +1,8 @@
 """Run a small isometric scene using placeholder sprites.
 
-Click the map to move the cyan spirit; paths avoid water, blue tiles, and
-boulders. Ten additional spirits wander to random destinations on their own.
-Spirits use a high draw layer so they stay visible above floor tiles. The demo
-uses an 18x18 floor with random blue tiles and smooth interpolated movement.
+Click the map to move the cyan player spirit (gold ring); paths avoid water,
+blue tiles, boulders, and every other spirit's cell. Ten wandering spirits pick
+random goals with the same rules. Spirits use a high draw layer above tiles.
 """
 
 from __future__ import annotations

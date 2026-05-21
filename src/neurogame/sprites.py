@@ -125,6 +125,7 @@ def build_default_sprite_library() -> SpriteLibrary:
                 fill="#b8f7ff",
                 outline="#4c9cac",
                 shape="spirit",
+                blocks_pathfinding=True,
             ),
             SpriteDefinition(
                 name="spirit_fire_placeholder",
@@ -133,6 +134,7 @@ def build_default_sprite_library() -> SpriteLibrary:
                 fill="#ff9a56",
                 outline="#9e3e1d",
                 shape="spirit",
+                blocks_pathfinding=True,
             ),
             SpriteDefinition(
                 name="spirit_forest_placeholder",
@@ -141,6 +143,7 @@ def build_default_sprite_library() -> SpriteLibrary:
                 fill="#93e06c",
                 outline="#3d7c35",
                 shape="spirit",
+                blocks_pathfinding=True,
             ),
             SpriteDefinition(
                 name="prop_boulder",
