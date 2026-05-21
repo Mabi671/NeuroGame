@@ -98,16 +98,21 @@ class IsometricScene:
         self.sprites.get(entity.sprite)
         self.entities.append(entity)
 
-    def move_entity(self, entity_id: str, x: float, y: float, z: float = 0.0) -> None:
-        """Move an entity while preserving its other metadata."""
+    def move_entity(self, entity_id: str, x: float, y: float, z: float | None = None) -> None:
+        """Move an entity while preserving its other metadata.
+
+        When ``z`` is omitted, the entity keeps its current elevation so floating
+        units keep their height above the floor during horizontal motion.
+        """
 
         for index, entity in enumerate(self.entities):
             if entity.entity_id == entity_id:
+                new_z = entity.z if z is None else z
                 self.entities[index] = Entity(
                     entity_id=entity.entity_id,
                     x=x,
                     y=y,
-                    z=z,
+                    z=new_z,
                     sprite=entity.sprite,
                     layer=entity.layer,
                 )

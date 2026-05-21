@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from tkinter import Canvas, Tk
 
 from neurogame.engine import DrawCommand, IsometricScene
@@ -65,15 +66,29 @@ class TkinterRenderer:
         pathfinding_entity_id: str | None = "player",
         path_steps_per_grid_edge: int = 14,
         path_micro_step_ms: int = 12,
+        autonomous_spirit_ids: tuple[str, ...] = (),
+        autonomous_spirit_tick_ms: int | None = None,
     ) -> None:
         self._path_motion_queue: list[tuple[float, float]] = []
         self._path_after_id: object | None = None
         self._pathfinding_entity_id = pathfinding_entity_id
         self._path_steps_per_grid_edge = path_steps_per_grid_edge
         self._path_micro_step_ms = path_micro_step_ms
+        self._auto_spirit_ids = tuple(autonomous_spirit_ids)
+        self._auto_spirit_queues: dict[str, list[tuple[float, float]]] = {
+            entity_id: [] for entity_id in self._auto_spirit_ids
+        }
+        self._auto_spirit_after_id: object | None = None
+        self._auto_spirit_tick_ms = (
+            autonomous_spirit_tick_ms
+            if autonomous_spirit_tick_ms is not None
+            else path_micro_step_ms
+        )
         if pathfinding_entity_id:
             self.canvas.bind("<Button-1>", self._on_canvas_click)
         self.render()
+        if self._auto_spirit_ids:
+            self._schedule_autonomous_spirits()
         self.root.mainloop()
 
     def _on_canvas_click(self, event) -> None:
@@ -112,6 +127,50 @@ class TkinterRenderer:
             self._path_after_id = self.root.after(self._path_micro_step_ms, self._advance_path_motion)
         else:
             self._path_after_id = None
+
+    def _schedule_autonomous_spirits(self) -> None:
+        self._auto_spirit_after_id = self.root.after(
+            self._auto_spirit_tick_ms,
+            self._advance_autonomous_spirits,
+        )
+
+    def _advance_autonomous_spirits(self) -> None:
+        self._auto_spirit_after_id = None
+        if not self._auto_spirit_ids:
+            return
+
+        for entity_id in self._auto_spirit_ids:
+            queue = self._auto_spirit_queues.setdefault(entity_id, [])
+            if not queue:
+                self._assign_random_autonomous_path(entity_id)
+                queue = self._auto_spirit_queues.setdefault(entity_id, [])
+
+            if queue:
+                next_x, next_y = queue.pop(0)
+                self.scene.move_entity(entity_id, float(next_x), float(next_y))
+
+        self.render()
+        self._schedule_autonomous_spirits()
+
+    def _assign_random_autonomous_path(self, entity_id: str) -> None:
+        bounds = self.scene.floor_grid_bounds()
+        if bounds is None:
+            return
+
+        min_x, max_x, min_y, max_y = bounds
+        for _ in range(48):
+            goal_x = random.randint(min_x, max_x)
+            goal_y = random.randint(min_y, max_y)
+            path = self.scene.pathfind_entity_to_cell(entity_id, goal_x, goal_y)
+            if path is None:
+                continue
+            if len(path) < 2:
+                continue
+            self._auto_spirit_queues[entity_id] = _motion_points_along_grid_path(
+                path,
+                steps_per_edge=self._path_steps_per_grid_edge,
+            )
+            return
 
     def _draw_command(self, command: DrawCommand) -> None:
         sprite = command.sprite

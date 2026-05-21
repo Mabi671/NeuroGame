@@ -133,7 +133,6 @@ def build_default_sprite_library() -> SpriteLibrary:
                 fill="#ff9a56",
                 outline="#9e3e1d",
                 shape="spirit",
-                blocks_pathfinding=True,
             ),
             SpriteDefinition(
                 name="spirit_forest_placeholder",
