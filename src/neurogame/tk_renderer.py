@@ -5,6 +5,10 @@ When ``tile_edit_menu`` is enabled in ``run()``, the window gets **Mode** and
 
 ``player_path_cooldown_s`` (default 0.3) enforces a minimum delay between
 accepted player spirit path changes to avoid rapid replanning from click spam.
+
+While following a queued path, each step is checked against the **current**
+blocked-cell set so movement stops or replans (NPCs) when obstacles change
+mid-route (e.g. painted tiles or other spirits).
 """
 
 from __future__ import annotations
@@ -37,6 +41,18 @@ def _motion_points_along_grid_path(
             t = step / steps_per_edge
             points.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
     return points
+
+
+def _queued_step_targets_blocked_cell(
+    scene: IsometricScene,
+    entity_id: str,
+    next_x: float,
+    next_y: float,
+) -> bool:
+    """True if the rounded grid cell for ``(next_x, next_y)`` is currently impassable."""
+
+    blocked = scene.blocked_cells_for_pathfinding(moving_entity_id=entity_id)
+    return (int(round(next_x)), int(round(next_y))) in blocked
 
 
 TILE_BRUSH_MENU: tuple[tuple[str, str], ...] = (
@@ -233,6 +249,13 @@ class TkinterRenderer:
             self._path_motion_queue.clear()
             return
 
+        if self._path_motion_queue:
+            peek_x, peek_y = self._path_motion_queue[0]
+            if _queued_step_targets_blocked_cell(self.scene, entity_id, peek_x, peek_y):
+                self._path_motion_queue.clear()
+                self.render()
+                return
+
         next_x, next_y = self._path_motion_queue.pop(0)
         self.scene.move_entity(entity_id, float(next_x), float(next_y))
         self.scene.apply_spirit_tile_hazards_after_move(entity_id)
@@ -271,12 +294,17 @@ class TkinterRenderer:
                 queue = self._auto_spirit_queues.setdefault(entity_id, [])
 
             if queue:
-                next_x, next_y = queue.pop(0)
-                self.scene.move_entity(entity_id, float(next_x), float(next_y))
-                self.scene.apply_spirit_tile_hazards_after_move(entity_id)
-                if not self.scene.has_entity(entity_id):
-                    self._auto_spirit_id_list.remove(entity_id)
-                    self._auto_spirit_queues.pop(entity_id, None)
+                peek_x, peek_y = queue[0]
+                if _queued_step_targets_blocked_cell(self.scene, entity_id, peek_x, peek_y):
+                    self._auto_spirit_queues[entity_id] = []
+                    self._assign_random_autonomous_path(entity_id)
+                else:
+                    next_x, next_y = queue.pop(0)
+                    self.scene.move_entity(entity_id, float(next_x), float(next_y))
+                    self.scene.apply_spirit_tile_hazards_after_move(entity_id)
+                    if not self.scene.has_entity(entity_id):
+                        self._auto_spirit_id_list.remove(entity_id)
+                        self._auto_spirit_queues.pop(entity_id, None)
 
         self.render()
         if self._auto_spirit_id_list:

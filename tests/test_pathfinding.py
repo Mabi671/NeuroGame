@@ -2,6 +2,17 @@ import unittest
 
 from neurogame import Entity, IsometricScene, Tile
 from neurogame.pathfinding import find_path_on_grid
+from neurogame.tk_renderer import _queued_step_targets_blocked_cell
+
+
+class QueuedStepBlockedTests(unittest.TestCase):
+    def test_next_position_uses_current_blocked_set(self) -> None:
+        scene = IsometricScene.flat_map(3, 3)
+        scene.set_tile(Tile(x=2, y=1, sprite="tile_water"))
+        scene.add_entity(Entity(entity_id="m", x=1, y=1, sprite="spirit_placeholder"))
+
+        self.assertFalse(_queued_step_targets_blocked_cell(scene, "m", 1.0, 1.0))
+        self.assertTrue(_queued_step_targets_blocked_cell(scene, "m", 2.0, 1.0))
 
 
 class FindPathOnGridTests(unittest.TestCase):
